@@ -1,15 +1,13 @@
-const PROXY = 'https://corsproxy.io/?url=';
-const BASE = 'https://query1.finance.yahoo.com';
-
-async function fetchYahoo(path) {
-  const url = `${PROXY}${encodeURIComponent(BASE + path)}`;
+async function fetchAPI(endpoint, params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const url = `${endpoint}${query ? '?' + query : ''}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 export async function fetchQuote(symbol) {
-  const data = await fetchYahoo(`/v8/finance/chart/${symbol}?interval=1d&range=5d`);
+  const data = await fetchAPI('/api/chart', { symbol, interval: '1d', range: '5d' });
   const meta = data.chart.result[0].meta;
   const closes = data.chart.result[0].indicators.quote[0].close;
   const prev = closes[closes.length - 2] ?? meta.previousClose;
@@ -19,7 +17,7 @@ export async function fetchQuote(symbol) {
 }
 
 export async function fetchChart(symbol, interval = '1d', range = '6mo') {
-  const data = await fetchYahoo(`/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`);
+  const data = await fetchAPI('/api/chart', { symbol, interval, range });
   const result = data.chart.result[0];
   const timestamps = result.timestamp;
   const quotes = result.indicators.quote[0];
@@ -31,9 +29,7 @@ export async function fetchChart(symbol, interval = '1d', range = '6mo') {
 }
 
 export async function fetchSummary(symbol) {
-  const data = await fetchYahoo(
-    `/v10/finance/quoteSummary/${symbol}?modules=summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,assetProfile`
-  );
+  const data = await fetchAPI('/api/summary', { symbol });
   return data.quoteSummary.result[0];
 }
 
