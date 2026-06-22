@@ -1,8 +1,7 @@
 export default async function handler(req, res) {
-  const { symbol } = req.query;
-  if (!symbol) return res.status(400).json({ error: 'symbol required' });
-  const modules = 'summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,assetProfile';
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`;
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ error: 'q required' });
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0&listsCount=0`;
   try {
     const response = await fetch(url, {
       headers: {
@@ -14,7 +13,6 @@ export default async function handler(req, res) {
     });
     if (!response.ok) return res.status(response.status).json({ error: `Yahoo returned ${response.status}` });
     const data = await response.json();
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
