@@ -33,9 +33,20 @@ export async function fetchSummary(symbol) {
   return data.quoteSummary.result[0];
 }
 
+export async function fetchV7Quotes(symbols) {
+  if (!symbols.length) return [];
+  const data = await fetchAPI('/api/v7quote', { symbols: symbols.join(',') });
+  return data.quoteResponse?.result ?? [];
+}
+
+export async function searchSymbols(q) {
+  const data = await fetchAPI('/api/search', { q });
+  return (data.quotes ?? []).filter(r => ['EQUITY', 'ETF', 'INDEX'].includes(r.quoteType));
+}
+
 export const INDICES = [
   { symbol: '^N225', name: '日経225' },
-  { symbol: '^TOPX', name: 'TOPIX' },
+  { symbol: '^TOPIX', name: 'TOPIX' },
   { symbol: '^IXIC', name: 'NASDAQ' },
   { symbol: '^GSPC', name: 'S&P500' },
   { symbol: '^DJI', name: 'ダウ' },
@@ -48,4 +59,61 @@ export const DEFAULT_WATCHLIST = [
   { symbol: 'AAPL', name: 'Apple' },
   { symbol: 'MSFT', name: 'Microsoft' },
   { symbol: 'NVDA', name: 'NVIDIA' },
+];
+
+export const WATCH_CATEGORIES = [
+  { key: 'custom', label: 'マイリスト' },
+  {
+    key: 'space', label: '宇宙関連',
+    stocks: [
+      { symbol: '7011.T', name: '三菱重工業' },
+      { symbol: '7012.T', name: '川崎重工業' },
+      { symbol: 'RKLB', name: 'Rocket Lab' },
+      { symbol: 'LMT', name: 'Lockheed Martin' },
+      { symbol: 'BA', name: 'Boeing' },
+      { symbol: 'ASTS', name: 'AST SpaceMobile' },
+    ],
+  },
+  {
+    key: 'drone', label: 'ドローン関連',
+    stocks: [
+      { symbol: 'JOBY', name: 'Joby Aviation' },
+      { symbol: 'ACHR', name: 'Archer Aviation' },
+      { symbol: 'AVAV', name: 'AeroVironment' },
+      { symbol: 'EH', name: 'EHang Holdings' },
+      { symbol: '6954.T', name: 'ファナック' },
+    ],
+  },
+  {
+    key: 'semiconductor', label: '半導体',
+    stocks: [
+      { symbol: 'NVDA', name: 'NVIDIA' },
+      { symbol: 'AMD', name: 'AMD' },
+      { symbol: 'TSM', name: 'TSMC' },
+      { symbol: 'ASML', name: 'ASML' },
+      { symbol: '8035.T', name: '東京エレクトロン' },
+      { symbol: '6723.T', name: 'ルネサス' },
+    ],
+  },
+  {
+    key: 'ai', label: 'AI・テック',
+    stocks: [
+      { symbol: 'MSFT', name: 'Microsoft' },
+      { symbol: 'GOOGL', name: 'Alphabet' },
+      { symbol: 'META', name: 'Meta' },
+      { symbol: 'AAPL', name: 'Apple' },
+      { symbol: 'AMZN', name: 'Amazon' },
+      { symbol: '4307.T', name: '野村総研' },
+    ],
+  },
+  {
+    key: 'finance', label: '金融',
+    stocks: [
+      { symbol: '8306.T', name: '三菱UFJ' },
+      { symbol: '8316.T', name: '三井住友 FG' },
+      { symbol: '8411.T', name: 'みずほFG' },
+      { symbol: 'JPM', name: 'JPMorgan' },
+      { symbol: 'GS', name: 'Goldman Sachs' },
+    ],
+  },
 ];
