@@ -6,41 +6,53 @@ import SymbolSearch from '../components/SymbolSearch';
 import PriceChange from '../components/PriceChange';
 
 function RangeInput({ label, min, max, step = 0.1, value, onChange }) {
+  const isMax = value[1] >= max;
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-slate-400">
         <span>{label}</span>
-        <span>{value[0]} ~ {value[1] === max ? '∞' : value[1]}</span>
+        <span>{value[0]} ~ {isMax ? '∞' : value[1]}</span>
       </div>
       <div className="flex gap-2 items-center">
-        <input type="number" className="w-20 bg-slate-700 rounded px-2 py-1 text-xs text-center" value={value[0]} step={step} onChange={e => onChange([Number(e.target.value), value[1]])} />
-        <input type="range" className="flex-1" min={min} max={max} step={step} value={value[0]} onChange={e => onChange([Number(e.target.value), value[1]])} />
-        <input type="range" className="flex-1" min={min} max={max} step={step} value={value[1]} onChange={e => onChange([value[0], Number(e.target.value)])} />
-        <input type="number" className="w-20 bg-slate-700 rounded px-2 py-1 text-xs text-center" value={value[1]} step={step} onChange={e => onChange([value[0], Number(e.target.value)])} />
+        <input type="number" className="w-20 bg-slate-700 rounded px-2 py-1 text-xs text-center" value={value[0]} step={step}
+          onChange={e => onChange([Number(e.target.value), value[1]])} />
+        <input type="range" className="flex-1" min={min} max={max} step={step} value={value[0]}
+          onChange={e => onChange([Number(e.target.value), value[1]])} />
+        <input type="range" className="flex-1" min={min} max={max} step={step} value={value[1]}
+          onChange={e => onChange([value[0], Number(e.target.value)])} />
+        <input type="number" className="w-20 bg-slate-700 rounded px-2 py-1 text-xs text-center" value={value[1]} step={step}
+          onChange={e => onChange([value[0], Number(e.target.value)])} />
       </div>
     </div>
   );
 }
 
 const FILTERS_DEF = [
-  { key: 'per', label: 'PER', min: 0, max: 100, step: 1 },
-  { key: 'pbr', label: 'PBR', min: 0, max: 20, step: 0.1 },
-  { key: 'div', label: '配当利回り (%)', min: 0, max: 10, step: 0.1 },
-  { key: 'changePct', label: '前日比 (%)', min: -20, max: 20, step: 0.5 },
+  { key: 'per',       label: 'PER',           min: 0,   max: 500,  step: 5 },
+  { key: 'pbr',       label: 'PBR',           min: 0,   max: 50,   step: 0.5 },
+  { key: 'div',       label: '配当利回り (%)',  min: 0,   max: 15,   step: 0.1 },
+  { key: 'changePct', label: '前日比 (%)',     min: -30, max: 30,   step: 0.5 },
 ];
+const FILTER_MAXES = Object.fromEntries(FILTERS_DEF.map(f => [f.key, f.max]));
+const FILTER_MINS  = Object.fromEntries(FILTERS_DEF.map(f => [f.key, f.min]));
 
 function fmtNum(v, d = 2) { return v != null ? v.toFixed(d) : '—'; }
 function fmtCap(v) {
   if (v == null) return '—';
   if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
-  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
-  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e9)  return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6)  return `$${(v / 1e6).toFixed(2)}M`;
   return `$${v.toLocaleString()}`;
 }
 
 export default function Screening() {
   const [symbols, setSymbols] = useState('7203.T,6758.T,9984.T,4063.T,8306.T,AAPL,MSFT,GOOGL,AMZN,META,NVDA,TSLA');
-  const [filters, setFilters] = useState({ per: [0, 100], pbr: [0, 20], div: [0, 10], changePct: [-20, 20] });
+  const [filters, setFilters] = useState({
+    per:       [0, FILTER_MAXES.per],
+    pbr:       [0, FILTER_MAXES.pbr],
+    div:       [0, FILTER_MAXES.div],
+    changePct: [FILTER_MINS.changePct, FILTER_MAXES.changePct],
+  });
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -55,6 +67,15 @@ export default function Screening() {
     });
   }, []);
 
+  const passes = (val, key) => {
+    if (val == null) return true;
+    const [lo, hi] = filters[key];
+    if (val < lo) return false;
+    if (hi < FILTER_MAXES[key] && val > hi) return false;
+    if (lo > FILTER_MINS[key] && val < lo) return false;
+    return true;
+  };
+
   const runScreening = async () => {
     setLoading(true); setError(null); setResults([]);
     const list = symbols.split(',').map(s => s.trim()).filter(Boolean);
@@ -62,14 +83,10 @@ export default function Screening() {
     try {
       const quotes = await fetchV7Quotes(list);
       const filtered = quotes.filter(q => {
-        const per = q.trailingPE;
-        const pbr = q.priceToBook;
-        const div = q.dividendYield != null ? q.dividendYield * 100 : null;
-        const changePct = q.regularMarketChangePercent;
-        if (per != null && (per < filters.per[0] || per > filters.per[1])) return false;
-        if (pbr != null && (pbr < filters.pbr[0] || pbr > filters.pbr[1])) return false;
-        if (div != null && (div < filters.div[0] || div > filters.div[1])) return false;
-        if (changePct != null && (changePct < filters.changePct[0] || changePct > filters.changePct[1])) return false;
+        if (!passes(q.trailingPE, 'per')) return false;
+        if (!passes(q.priceToBook, 'pbr')) return false;
+        if (!passes(q.dividendYield != null ? q.dividendYield * 100 : null, 'div')) return false;
+        if (!passes(q.regularMarketChangePercent, 'changePct')) return false;
         return true;
       });
       setResults(filtered);
@@ -90,17 +107,13 @@ export default function Screening() {
         </div>
         <div>
           <label className="text-sm text-slate-400 block mb-1">銘柄リスト（カンマ区切り）</label>
-          <textarea
-            className="w-full bg-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 resize-none"
-            rows={2}
-            value={symbols}
-            onChange={e => setSymbols(e.target.value)}
-            placeholder="例: 7203.T, AAPL, MSFT"
-          />
+          <textarea className="w-full bg-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 resize-none"
+            rows={2} value={symbols} onChange={e => setSymbols(e.target.value)} placeholder="例: 7203.T, AAPL, MSFT" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {FILTERS_DEF.map(f => (
-            <RangeInput key={f.key} label={f.label} min={f.min} max={f.max} step={f.step} value={filters[f.key]} onChange={handleFilter(f.key)} />
+            <RangeInput key={f.key} label={f.label} min={f.min} max={f.max} step={f.step}
+              value={filters[f.key]} onChange={handleFilter(f.key)} />
           ))}
         </div>
         <button onClick={runScreening} disabled={loading}

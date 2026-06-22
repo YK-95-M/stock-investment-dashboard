@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { fetchQuote, fetchSummary, fetchChart } from '../api/yahoo';
+import { fetchQuote, fetchSummary, fetchChart, searchSymbols } from '../api/yahoo';
 import { Spinner } from '../components/Loading';
 import { Link } from 'react-router-dom';
 
@@ -35,12 +35,80 @@ function useStockData(symbol) {
 }
 
 function SymbolInput({ value, onChange, onRemove, color }) {
+  const [query, setQuery] = useState(value);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); setOpen(false); return; }
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await searchSymbols(query);
+        setResults(data.slice(0, 6));
+        setOpen(data.length > 0);
+      } catch { setResults([]); }
+      setLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const handleChange = (v) => {
+    setQuery(v);
+    onChange(v.toUpperCase());
+  };
+
+  const handleSelect = (r) => {
+    setQuery(r.symbol);
+    onChange(r.symbol);
+    setResults([]);
+    setOpen(false);
+  };
+
   return (
-    <div className="flex items-center gap-2">
+    <div ref={ref} className="flex items-center gap-2">
       <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-      <input type="text" className="flex-1 bg-slate-700 rounded px-3 py-1.5 text-sm uppercase"
-        placeholder="例: AAPL, 7203.T" value={value} onChange={e => onChange(e.target.value.toUpperCase())} />
-      <button onClick={onRemove} className="text-slate-400 hover:text-red-400 transition-colors px-1">✕</button>
+      <div className="flex-1 relative">
+        <div className="flex items-center bg-slate-700 rounded px-3 py-1.5 gap-2 focus-within:ring-1 focus-within:ring-blue-500">
+          <input
+            type="text"
+            className="flex-1 bg-transparent text-sm uppercase text-slate-200 placeholder-slate-500 outline-none"
+            placeholder="例: AAPL, 7203.T"
+            value={query}
+            onChange={e => handleChange(e.target.value)}
+            onFocus={() => results.length > 0 && setOpen(true)}
+          />
+          {loading && <div className="w-3 h-3 border border-slate-500 border-t-blue-400 rounded-full animate-spin flex-shrink-0" />}
+        </div>
+        {open && results.length > 0 && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
+            {results.map(r => (
+              <button
+                key={r.symbol}
+                className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-700 text-left text-sm"
+                onMouseDown={() => handleSelect(r)}
+              >
+                <div className="min-w-0">
+                  <span className="font-medium text-slate-100">{r.symbol}</span>
+                  <span className="text-slate-400 text-xs ml-2 truncate">{r.shortname || r.longname}</span>
+                </div>
+                <span className="text-slate-500 text-xs flex-shrink-0 ml-2">{r.exchDisp}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <button onClick={onRemove} className="text-slate-400 hover:text-red-400 transition-colors px-1 flex-shrink-0">✕</button>
     </div>
   );
 }
