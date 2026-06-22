@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchQuote, fetchSummary, INDICES, DEFAULT_WATCHLIST } from '../api/yahoo';
-import { ErrorMsg, Spinner } from '../components/Loading';
+import { fetchQuote, fetchV7Quotes, INDICES, DEFAULT_WATCHLIST, WATCH_CATEGORIES } from '../api/yahoo';
+import { Spinner } from '../components/Loading';
 import PriceChange from '../components/PriceChange';
+import SymbolSearch from '../components/SymbolSearch';
 
 function IndexCard({ symbol, name }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  useEffect(() => { fetchQuote(symbol).then(setData).catch(e => setError(e.message)); }, [symbol]);
+  useEffect(() => {
+    fetchQuote(symbol).then(setData).catch(e => setError(e.message));
+  }, [symbol]);
   return (
     <div className="bg-[#1e293b] rounded-xl p-4 border border-slate-700 hover:border-slate-500 transition-colors">
       <div className="text-slate-400 text-xs mb-1">{name}</div>
@@ -20,46 +23,43 @@ function IndexCard({ symbol, name }) {
             <PriceChange value={data.changePct} />
           </div>
         </>
-      ) : !error && <div className="flex items-center gap-2 mt-2"><Spinner size={4} /><span className="text-slate-400 text-xs">読込中...</span></div>}
+      ) : !error && (
+        <div className="flex items-center gap-2 mt-2"><Spinner size={4} /><span className="text-slate-400 text-xs">読込中...</span></div>
+      )}
     </div>
   );
 }
 
-function WatchCard({ symbol, name }) {
-  const [quote, setQuote] = useState(null);
-  const [summary, setSummary] = useState(null);
-  const [error, setError] = useState(null);
-  useEffect(() => {
-    Promise.all([fetchQuote(symbol), fetchSummary(symbol).catch(() => null)])
-      .then(([q, s]) => { setQuote(q); setSummary(s); })
-      .catch(e => setError(e.message));
-  }, [symbol]);
-  const detail = summary?.summaryDetail;
-  const stats = summary?.defaultKeyStatistics;
+function WatchCard({ symbol, name, quoteData: q, onRemove }) {
+  const fmtNum = (v, d = 2) => v != null ? v.toFixed(d) : '—';
+  const fmtDiv = (v) => v != null ? `${(v * 100).toFixed(2)}%` : '—';
   return (
     <Link to={`/stock/${symbol}`}>
-      <div className="bg-[#1e293b] rounded-xl p-4 border border-slate-700 hover:border-blue-500 transition-colors cursor-pointer">
-        <div className="flex justify-between items-start mb-2">
+      <div className="bg-[#1e293b] rounded-xl p-4 border border-slate-700 hover:border-blue-500 transition-colors cursor-pointer relative group">
+        {onRemove && (
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+            className="absolute top-2 right-2 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-xs p-1"
+            title="削除"
+          >✕</button>
+        )}
+        <div className="flex justify-between items-start mb-2 pr-5">
           <div>
             <div className="font-semibold text-sm">{name}</div>
             <div className="text-slate-400 text-xs">{symbol}</div>
           </div>
-          {quote && (
+          {q ? (
             <div className="text-right">
-              <div className="font-bold">{quote.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
-              <PriceChange value={quote.changePct} />
+              <div className="font-bold">{q.regularMarketPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? '—'}</div>
+              <PriceChange value={q.regularMarketChangePercent} />
             </div>
-          )}
+          ) : <Spinner size={4} />}
         </div>
-        {error && <ErrorMsg message="データ取得失敗" />}
-        {!quote && !error && <div className="flex gap-2 items-center"><Spinner size={4} /><span className="text-xs text-slate-400">読込中...</span></div>}
-        {quote && (
-          <div className="grid grid-cols-3 gap-2 mt-2 text-xs text-slate-400">
-            <div><div>PER</div><div className="text-slate-200">{detail?.trailingPE?.fmt ?? '—'}</div></div>
-            <div><div>PBR</div><div className="text-slate-200">{stats?.priceToBook?.fmt ?? '—'}</div></div>
-            <div><div>配当利回り</div><div className="text-slate-200">{detail?.dividendYield?.fmt ?? '—'}</div></div>
-          </div>
-        )}
+        <div className="grid grid-cols-3 gap-2 mt-2 text-xs text-slate-400">
+          <div><div>PER</div><div className="text-slate-200">{fmtNum(q?.trailingPE)}</div></div>
+          <div><div>PBR</div><div className="text-slate-200">{fmtNum(q?.priceToBook)}</div></div>
+          <div><div>配当利回り</div><div className="text-slate-200">{fmtDiv(q?.dividendYield)}</div></div>
+        </div>
       </div>
     </Link>
   );
@@ -89,24 +89,98 @@ function BuffettIndicator() {
 }
 
 export default function Dashboard() {
+  const [selectedCategory, setSelectedCategory] = useState('custom');
+  const [customList, setCustomList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('watchlist');
+      return saved ? JSON.parse(saved) : DEFAULT_WATCHLIST;
+    } catch { return DEFAULT_WATCHLIST; }
+  });
+  const [quoteMap, setQuoteMap] = useState({});
+
+  const category = WATCH_CATEGORIES.find(c => c.key === selectedCategory);
+  const currentStocks = selectedCategory === 'custom' ? customList : (category?.stocks ?? []);
+  const stocksKey = currentStocks.map(s => s.symbol).join(',');
+
+  useEffect(() => {
+    if (!currentStocks.length) return;
+    fetchV7Quotes(currentStocks.map(s => s.symbol))
+      .then(results => {
+        const map = {};
+        results.forEach(r => { map[r.symbol] = r; });
+        setQuoteMap(map);
+      })
+      .catch(() => {});
+  }, [stocksKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const addToWatchlist = useCallback((stock) => {
+    setCustomList(prev => {
+      if (prev.find(s => s.symbol === stock.symbol)) return prev;
+      const next = [...prev, { symbol: stock.symbol, name: stock.name || stock.symbol }];
+      try { localStorage.setItem('watchlist', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const removeFromWatchlist = useCallback((symbol) => {
+    setCustomList(prev => {
+      const next = prev.filter(s => s.symbol !== symbol);
+      try { localStorage.setItem('watchlist', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       <h1 className="text-2xl font-bold">ダッシュボード</h1>
+
       <section>
         <h2 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wide">主要指数</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {INDICES.map(idx => <IndexCard key={idx.symbol} {...idx} />)}
         </div>
       </section>
+
       <section>
         <h2 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wide">バフェット指標</h2>
         <BuffettIndicator />
       </section>
+
       <section>
-        <h2 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wide">ウォッチリスト</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {DEFAULT_WATCHLIST.map(stock => <WatchCard key={stock.symbol} {...stock} />)}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wide">ウォッチリスト</h2>
+          <select
+            value={selectedCategory}
+            onChange={e => { setSelectedCategory(e.target.value); setQuoteMap({}); }}
+            className="bg-slate-700 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {WATCH_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
         </div>
+
+        {selectedCategory === 'custom' && (
+          <div className="mb-3">
+            <SymbolSearch
+              onSelect={r => addToWatchlist({ symbol: r.symbol, name: r.shortname || r.shortName || r.longname || r.longName || r.symbol })}
+              placeholder="銘柄コード・名前で検索して追加..."
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {currentStocks.map(stock => (
+            <WatchCard
+              key={stock.symbol}
+              symbol={stock.symbol}
+              name={stock.name}
+              quoteData={quoteMap[stock.symbol]}
+              onRemove={selectedCategory === 'custom' ? () => removeFromWatchlist(stock.symbol) : null}
+            />
+          ))}
+        </div>
+        {!currentStocks.length && selectedCategory === 'custom' && (
+          <div className="text-center text-slate-400 py-8">上の検索ボックスから銘柄を追加してください</div>
+        )}
       </section>
     </div>
   );
