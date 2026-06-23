@@ -24,21 +24,18 @@ const FILTERS_DEF = [
 const FILTER_MAXES = Object.fromEntries(FILTERS_DEF.map(f => [f.key, f.max]));
 const FILTER_MINS  = Object.fromEntries(FILTERS_DEF.map(f => [f.key, f.min]));
 
-function RangeFilter({ label, min, max, step, value, onChange }) {
+function RangeFilter({ filterKey, label, min, max, step, value, onChange }) {
   const atMax = value[1] >= max;
-  const atMin = value[0] <= min;
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-xs">
         <span className="text-slate-300 font-medium">{label}</span>
         <span className="text-slate-400 tabular-nums">
-          {atMin && min === FILTER_MINS[label] ? '' : value[0]}
-          {' ~ '}
-          {atMax ? '∞' : value[1]}
+          {value[0]}  〜  {atMax ? '∞' : value[1]}
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <input type="number" value={value[0]} step={step}
+        <input type="number" value={value[0]} step={step} min={min} max={max}
           className="w-16 bg-slate-700 rounded px-2 py-1 text-xs text-center"
           onChange={e => onChange([Number(e.target.value), value[1]])} />
         <div className="flex-1 flex flex-col gap-1">
@@ -49,7 +46,7 @@ function RangeFilter({ label, min, max, step, value, onChange }) {
             className="w-full accent-blue-500"
             onChange={e => onChange([value[0], Number(e.target.value)])} />
         </div>
-        <input type="number" value={value[1]} step={step}
+        <input type="number" value={value[1]} step={step} min={min} max={max}
           className="w-16 bg-slate-700 rounded px-2 py-1 text-xs text-center"
           onChange={e => onChange([value[0], Number(e.target.value)])} />
       </div>
@@ -128,7 +125,6 @@ export default function Screening() {
 
       <div className="bg-[#1e293b] rounded-xl p-5 border border-slate-700 space-y-5">
 
-        {/* Market selector */}
         <div>
           <p className="text-xs text-slate-400 mb-2 font-medium">対象市場を選択</p>
           <div className="flex flex-wrap gap-2">
@@ -150,12 +146,11 @@ export default function Screening() {
           </div>
         </div>
 
-        {/* Custom symbol search */}
         {selectedMarket === 'custom' && (
           <div>
             <p className="text-xs text-slate-400 mb-2 font-medium">銘柄を追加</p>
             <SymbolSearch onSelect={addSymbol} placeholder="銘柄名・コードで検索…" />
-            {customSymbols.length > 0 && (
+            {customSymbols.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {customSymbols.map(sym => (
                   <span key={sym} className="inline-flex items-center gap-1 bg-slate-700 rounded-full px-2.5 py-0.5 text-xs">
@@ -165,27 +160,25 @@ export default function Screening() {
                   </span>
                 ))}
               </div>
-            )}
-            {customSymbols.length === 0 && (
+            ) : (
               <p className="text-xs text-slate-500 mt-2">検索候補をクリックすると追加されます</p>
             )}
           </div>
         )}
 
-        {/* Summary of what will be screened */}
         <div className="text-xs text-slate-400 bg-slate-800/50 rounded-lg px-3 py-2">
-          🔍 {symbolList.length > 0
-            ? `${MARKETS.find(m => m.key === selectedMarket)?.label ?? 'マイリスト'}の ${symbolList.length} 銘柄を対象にフィルタリングします`
+          {symbolList.length > 0
+            ? `🔍 ${MARKETS.find(m => m.key === selectedMarket)?.label ?? 'マイリスト'} の ${symbolList.length} 銘柄を対象にフィルタリングします`
             : '銘柄を選択または追加してください'
           }
         </div>
 
-        {/* Filters */}
         <div>
-          <p className="text-xs text-slate-400 mb-3 font-medium">フィルター条件（数値が∀の場合は条件なし）</p>
+          <p className="text-xs text-slate-400 mb-3 font-medium">フィルター条件（最大値が ∞ の項目は上限なし）</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {FILTERS_DEF.map(f => (
-              <RangeFilter key={f.key} label={f.label} min={f.min} max={f.max} step={f.step}
+              <RangeFilter key={f.key} filterKey={f.key} label={f.label}
+                min={f.min} max={f.max} step={f.step}
                 value={filters[f.key]} onChange={handleFilter(f.key)} />
             ))}
           </div>
@@ -241,7 +234,7 @@ export default function Screening() {
       )}
 
       {!ran && (
-        <div className="text-center text-slate-400 py-8">市場を選び、条件を設定して「スクリーニング実行」をクリックしてください</div>
+        <div className="text-center text-slate-400 py-8">市場を選び、「スクリーニング実行」をクリックすると結果が表示されます</div>
       )}
     </div>
   );
