@@ -10,3 +10,41 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #0f172a; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+/* Dual-handle range slider */
+.range-slider { position: relative; height: 20px; display: flex; align-items: center; }
+.range-slider input[type="range"] {
+  position: absolute;
+  width: 100%;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  height: 20px;
+}
+.range-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 2px solid #0f172a;
+  cursor: pointer;
+  pointer-events: all;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+.range-slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 2px solid #0f172a;
+  cursor: pointer;
+  pointer-events: all;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+.range-slider input[type="range"]::-webkit-slider-runnable-track { background: transparent; }
+.range-slider input[type="range"]::-moz-range-track { background: transparent; height: 0; }

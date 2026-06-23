@@ -220,7 +220,7 @@ function CandlestickChart({ data, enabledMAs }) {
 export default function StockDetail() {
   const { symbol } = useParams();
   const [modeIdx,    setModeIdx]    = useState(0);
-  const [chartType,  setChartType]  = useState('line');
+  const [chartType,  setChartType]  = useState('candle');
   const [enabledMAs, setEnabledMAs] = useState({ ma5: true, ma25: true, ma75: false, ma200: false });
   const mode = CHART_MODES[modeIdx];
 

@@ -24,31 +24,35 @@ const FILTERS_DEF = [
 const FILTER_MAXES = Object.fromEntries(FILTERS_DEF.map(f => [f.key, f.max]));
 const FILTER_MINS  = Object.fromEntries(FILTERS_DEF.map(f => [f.key, f.min]));
 
-function RangeFilter({ filterKey, label, min, max, step, value, onChange }) {
-  const atMax = value[1] >= max;
+function DualRangeFilter({ label, min, max, step, value, onChange }) {
+  const [lo, hi] = value;
+  const range   = max - min;
+  const pctLo   = range ? ((lo - min) / range) * 100 : 0;
+  const pctHi   = range ? ((hi - min) / range) * 100 : 100;
+  const atMax   = hi >= max;
+
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex justify-between text-xs">
         <span className="text-slate-300 font-medium">{label}</span>
         <span className="text-slate-400 tabular-nums">
-          {value[0]}  〜  {atMax ? '∞' : value[1]}
+          {lo} 〜 {atMax ? '∞' : hi}
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        <input type="number" value={value[0]} step={step} min={min} max={max}
-          className="w-16 bg-slate-700 rounded px-2 py-1 text-xs text-center"
-          onChange={e => onChange([Number(e.target.value), value[1]])} />
-        <div className="flex-1 flex flex-col gap-1">
-          <input type="range" min={min} max={max} step={step} value={value[0]}
-            className="w-full accent-blue-500"
-            onChange={e => onChange([Number(e.target.value), value[1]])} />
-          <input type="range" min={min} max={max} step={step} value={value[1]}
-            className="w-full accent-blue-500"
-            onChange={e => onChange([value[0], Number(e.target.value)])} />
+      <div className="relative" style={{ paddingTop: 2 }}>
+        {/* Track background */}
+        <div className="absolute left-0 right-0 h-1 bg-slate-600 rounded" style={{ top: '50%', transform: 'translateY(-50%)' }} />
+        {/* Track fill */}
+        <div className="absolute h-1 bg-blue-500 rounded"
+          style={{ left: `${pctLo}%`, width: `${pctHi - pctLo}%`, top: '50%', transform: 'translateY(-50%)' }} />
+        <div className="range-slider">
+          <input type="range" min={min} max={max} step={step} value={lo}
+            style={{ zIndex: lo >= hi ? 5 : 3 }}
+            onChange={e => onChange([Math.min(Number(e.target.value), hi), hi])} />
+          <input type="range" min={min} max={max} step={step} value={hi}
+            style={{ zIndex: 4 }}
+            onChange={e => onChange([lo, Math.max(Number(e.target.value), lo)])} />
         </div>
-        <input type="number" value={value[1]} step={step} min={min} max={max}
-          className="w-16 bg-slate-700 rounded px-2 py-1 text-xs text-center"
-          onChange={e => onChange([value[0], Number(e.target.value)])} />
       </div>
     </div>
   );
@@ -96,7 +100,7 @@ export default function Screening() {
   const passes = (val, key) => {
     if (val == null) return true;
     const [lo, hi] = filters[key];
-    if (lo > FILTER_MINS[key] && val < lo) return false;
+    if (lo > FILTER_MINS[key]  && val < lo) return false;
     if (hi < FILTER_MAXES[key] && val > hi) return false;
     return true;
   };
@@ -174,10 +178,10 @@ export default function Screening() {
         </div>
 
         <div>
-          <p className="text-xs text-slate-400 mb-3 font-medium">フィルター条件（最大値が ∞ の項目は上限なし）</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <p className="text-xs text-slate-400 mb-4 font-medium">フィルター条件（最大値が ∞ の項目は上限なし）</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {FILTERS_DEF.map(f => (
-              <RangeFilter key={f.key} filterKey={f.key} label={f.label}
+              <DualRangeFilter key={f.key} label={f.label}
                 min={f.min} max={f.max} step={f.step}
                 value={filters[f.key]} onChange={handleFilter(f.key)} />
             ))}
