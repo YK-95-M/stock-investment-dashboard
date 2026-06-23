@@ -23,9 +23,7 @@ function IndexCard({ symbol, name }) {
             <PriceChange value={data.changePct} />
           </div>
         </>
-      ) : !error && (
-        <div className="flex items-center gap-2 mt-2"><Spinner size={4} /><span className="text-slate-400 text-xs">読込中...</span></div>
-      )}
+      ) : !error && <div className="flex items-center gap-2 mt-2"><Spinner size={4} /><span className="text-slate-400 text-xs">読込中...</span></div>}
     </div>
   );
 }
@@ -37,11 +35,9 @@ function WatchCard({ symbol, name, quoteData: q, onRemove }) {
     <Link to={`/stock/${symbol}`}>
       <div className="bg-[#1e293b] rounded-xl p-4 border border-slate-700 hover:border-blue-500 transition-colors cursor-pointer relative group">
         {onRemove && (
-          <button
-            onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+          <button onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
             className="absolute top-2 right-2 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-xs p-1"
-            title="削除"
-          >✕</button>
+            title="リストから削除">✕</button>
         )}
         <div className="flex justify-between items-start mb-2 pr-5">
           <div>
@@ -78,7 +74,7 @@ function BuffettIndicator() {
       <div className="mt-3 text-xs text-slate-400 space-y-1">
         <div>米国株式時価総額: <span className="text-slate-200">${value.marketCap}兆</span></div>
         <div>米国GDP: <span className="text-slate-200">${value.gdp}兆</span></div>
-        <div className="mt-2 text-slate-500">※ 100%未満: 割安　100-150%: 適正　150%超: 割高</div>
+        <div className="mt-2 text-slate-500">※ 100%未満: 割安　100–150%: 適正　150%超: 割高</div>
       </div>
       <div className="mt-3 w-full bg-slate-700 rounded-full h-2">
         <div className={`h-2 rounded-full ${value.ratio > 1.5 ? 'bg-red-500' : 'bg-yellow-500'}`}
@@ -116,21 +112,14 @@ function RankingPanel() {
     <div className="bg-[#1e293b] rounded-xl p-5 border border-slate-700">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-sm">ランキング TOP10</h2>
-        <select
-          value={type}
-          onChange={e => setType(e.target.value)}
-          className="bg-slate-700 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
+        <select value={type} onChange={e => setType(e.target.value)}
+          className="bg-slate-700 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
           {RANKING_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
       </div>
-
       {loading && <div className="flex justify-center py-8"><Spinner size={5} /></div>}
       {error   && <div className="text-red-400 text-xs py-4 text-center">{error}</div>}
-      {!loading && !error && quotes.length === 0 && (
-        <div className="text-slate-400 text-xs py-4 text-center">データなし</div>
-      )}
-
+      {!loading && !error && quotes.length === 0 && <div className="text-slate-400 text-xs py-4 text-center">データなし</div>}
       {!loading && quotes.length > 0 && (
         <div className="space-y-0.5">
           {quotes.map((q, i) => (
@@ -138,20 +127,12 @@ function RankingPanel() {
               className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-700/50 transition-colors group">
               <span className="text-slate-500 text-xs w-5 text-right shrink-0">{i + 1}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate group-hover:text-blue-400 transition-colors">
-                  {q.symbol}
-                </div>
-                {q.shortName && (
-                  <div className="text-slate-400 text-xs truncate">{q.shortName}</div>
-                )}
+                <div className="text-sm font-medium truncate group-hover:text-blue-400 transition-colors">{q.symbol}</div>
+                {q.shortName && <div className="text-slate-400 text-xs truncate">{q.shortName}</div>}
               </div>
               <div className="text-right shrink-0">
-                <div className="text-xs font-medium">
-                  {q.regularMarketPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? '—'}
-                </div>
-                {q.regularMarketChangePercent != null && (
-                  <PriceChange value={q.regularMarketChangePercent} />
-                )}
+                <div className="text-xs font-medium">{q.regularMarketPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? '—'}</div>
+                {q.regularMarketChangePercent != null && <PriceChange value={q.regularMarketChangePercent} />}
               </div>
             </Link>
           ))}
@@ -171,9 +152,9 @@ export default function Dashboard() {
   });
   const [quoteMap, setQuoteMap] = useState({});
 
-  const category     = WATCH_CATEGORIES.find(c => c.key === selectedCategory);
+  const category      = WATCH_CATEGORIES.find(c => c.key === selectedCategory);
   const currentStocks = selectedCategory === 'custom' ? customList : (category?.stocks ?? []);
-  const stocksKey    = currentStocks.map(s => s.symbol).join(',');
+  const stocksKey     = currentStocks.map(s => s.symbol).join(',');
 
   useEffect(() => {
     if (!currentStocks.length) return;
@@ -216,6 +197,7 @@ export default function Dashboard() {
 
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0 space-y-6">
+
           <section>
             <h2 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wide">バフェット指標</h2>
             <BuffettIndicator />
@@ -223,7 +205,12 @@ export default function Dashboard() {
 
           <section>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wide">ウォッチリスト</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wide">ウォッチリスト</h2>
+                {selectedCategory === 'custom' && (
+                  <span className="text-xs text-slate-500">{customList.length}件登録中</span>
+                )}
+              </div>
               <select
                 value={selectedCategory}
                 onChange={e => { setSelectedCategory(e.target.value); setQuoteMap({}); }}
@@ -234,11 +221,13 @@ export default function Dashboard() {
             </div>
 
             {selectedCategory === 'custom' && (
-              <div className="mb-3">
+              <div className="mb-4 rounded-lg border border-slate-600 border-dashed p-3 bg-slate-800/40">
+                <p className="text-xs text-slate-400 mb-2 font-medium">+ 銘柄を追加</p>
                 <SymbolSearch
                   onSelect={r => addToWatchlist({ symbol: r.symbol, name: r.shortname || r.shortName || r.longname || r.longName || r.symbol })}
-                  placeholder="銘柄コード・名前で検索して追加..."
+                  placeholder="銘柄名・コードで検索…"
                 />
+                <p className="text-xs text-slate-500 mt-2 text-center">検索候補をクリックすると追加されます　・　カードの✕ボタンで削除</p>
               </div>
             )}
 
@@ -254,9 +243,10 @@ export default function Dashboard() {
               ))}
             </div>
             {!currentStocks.length && selectedCategory === 'custom' && (
-              <div className="text-center text-slate-400 py-8">上の検索ボックスから銘柄を追加してください</div>
+              <div className="text-center text-slate-400 py-8">↑ 上の検索ボックスから銘柄を追加してください</div>
             )}
           </section>
+
         </div>
 
         <div className="lg:w-72 shrink-0">
