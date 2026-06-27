@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 const links = [
   { to: '/', label: 'ダッシュボード' },
+  { to: '/chart', label: 'チャート' },
   { to: '/screening', label: 'スクリーニング' },
   { to: '/compare', label: '銘柄比較' },
 ];
