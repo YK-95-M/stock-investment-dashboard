@@ -3,7 +3,7 @@ import { getYahooSession, clearYahooSession } from './_session.js';
 export default async function handler(req, res) {
   const { symbol } = req.query;
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
-  const modules = 'summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,assetProfile';
+  const modules = 'summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,balanceSheetHistory,assetProfile';
   try {
     const { cookies, crumb, UA } = await getYahooSession();
     const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}&crumb=${encodeURIComponent(crumb)}`;

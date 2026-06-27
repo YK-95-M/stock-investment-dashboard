@@ -5,6 +5,19 @@ import useQuote from '../hooks/useQuote';
 import { Spinner } from '../components/Loading';
 import SymbolSearch from '../components/SymbolSearch';
 import PriceChange from '../components/PriceChange';
+import { fetchV7Quotes, fetchSummary } from '../api/yahoo';
+
+function formatMarketCap(v) {
+  if (v == null) return '—';
+  if (v >= 1e12) return `${(v / 1e12).toFixed(1)}兆`;
+  if (v >= 1e8)  return `${(v / 1e8).toFixed(0)}億`;
+  if (v >= 1e6)  return `${(v / 1e6).toFixed(1)}M`;
+  return v.toLocaleString();
+}
+
+function fmt(v, digits = 2) {
+  return v != null ? Number(v).toFixed(digits) : '—';
+}
 
 const CHART_MARKETS = [
   { key: 'tse_prime', label: '東証プライム', stocks: [
@@ -196,6 +209,145 @@ const CHART_MARKETS = [
     { symbol: 'WFC',   name: 'Wells Fargo' },
     { symbol: 'WMT',   name: 'Walmart' },
     { symbol: 'XOM',   name: 'ExxonMobil' },
+  ]},
+  { key: 'tse_standard', label: '東証スタンダード', stocks: [
+    { symbol: '1332.T', name: '日本水産' },
+    { symbol: '1333.T', name: 'マルハニチロ' },
+    { symbol: '1414.T', name: 'ショーボンドHD' },
+    { symbol: '1417.T', name: 'ミライト・ワン' },
+    { symbol: '1720.T', name: '東急建設' },
+    { symbol: '1721.T', name: 'コムシスHD' },
+    { symbol: '1801.T', name: '大成建設' },
+    { symbol: '1803.T', name: '清水建設' },
+    { symbol: '1812.T', name: '鹿島建設' },
+    { symbol: '2002.T', name: '日清製粉G' },
+    { symbol: '2201.T', name: '森永製菓' },
+    { symbol: '2206.T', name: '江崎グリコ' },
+    { symbol: '2282.T', name: '日本ハム' },
+    { symbol: '2296.T', name: '丸大食品' },
+    { symbol: '2327.T', name: '日鉄ソリューションズ' },
+    { symbol: '2390.T', name: 'アクシーズ' },
+    { symbol: '2462.T', name: 'ライク' },
+    { symbol: '2471.T', name: 'エスプール' },
+    { symbol: '2501.T', name: 'サッポロHD' },
+    { symbol: '2652.T', name: 'まんだらけ' },
+    { symbol: '2702.T', name: '日本マクドナルドHD' },
+    { symbol: '2733.T', name: 'あらた' },
+    { symbol: '2768.T', name: '双日' },
+    { symbol: '2811.T', name: 'カゴメ' },
+    { symbol: '2910.T', name: 'ロック・フィールド' },
+    { symbol: '3105.T', name: '日清紡HD' },
+    { symbol: '3201.T', name: '日本毛織' },
+    { symbol: '3250.T', name: 'ADワークスG' },
+    { symbol: '3349.T', name: 'コスモス薬品' },
+    { symbol: '3543.T', name: 'コメダHD' },
+    { symbol: '3563.T', name: 'FOOD & LIFE' },
+    { symbol: '3635.T', name: 'コーエーテクモHD' },
+    { symbol: '3656.T', name: 'KLab' },
+    { symbol: '3769.T', name: 'GMOペイメントゲートウェイ' },
+    { symbol: '3856.T', name: 'Abalance' },
+    { symbol: '3965.T', name: 'キャピタル・アセット・プランニング' },
+    { symbol: '4041.T', name: '日本曹達' },
+    { symbol: '4061.T', name: 'デンカ' },
+    { symbol: '4096.T', name: '日本カーバイド工業' },
+    { symbol: '4206.T', name: 'アイカ工業' },
+    { symbol: '4631.T', name: 'DIC' },
+    { symbol: '4732.T', name: 'ユー・エス・エス' },
+    { symbol: '4746.T', name: '東計電算' },
+    { symbol: '5108.T', name: 'ブリヂストン' },
+    { symbol: '5202.T', name: '日本板硝子' },
+    { symbol: '5232.T', name: '住友大阪セメント' },
+    { symbol: '5301.T', name: '東海カーボン' },
+    { symbol: '5541.T', name: '大平洋金属' },
+    { symbol: '6062.T', name: 'チャームケア・コーポレーション' },
+    { symbol: '6309.T', name: '巴工業' },
+    { symbol: '6369.T', name: 'トーヨーカネツ' },
+    { symbol: '6460.T', name: 'セガサミーHD' },
+    { symbol: '6543.T', name: '日信工業' },
+    { symbol: '6635.T', name: '大日光・エンジニアリング' },
+    { symbol: '7148.T', name: 'FPG' },
+    { symbol: '7162.T', name: 'アストマックス' },
+    { symbol: '7184.T', name: '富山第一銀行' },
+    { symbol: '7508.T', name: 'G-7ホールディングス' },
+    { symbol: '7532.T', name: 'パン・パシフィックHD' },
+    { symbol: '7552.T', name: 'ハピネット' },
+    { symbol: '7599.T', name: 'IDOM' },
+    { symbol: '7717.T', name: 'ブイ・テクノロジー' },
+    { symbol: '7936.T', name: 'アシックス' },
+    { symbol: '8136.T', name: 'サンリオ' },
+    { symbol: '8153.T', name: 'MOS FOOD SERVICES' },
+    { symbol: '8160.T', name: 'ビックカメラ' },
+    { symbol: '8168.T', name: 'ケーズHD' },
+    { symbol: '8260.T', name: '井筒屋' },
+    { symbol: '8570.T', name: 'イオンフィナンシャルサービス' },
+    { symbol: '8572.T', name: 'アコム' },
+    { symbol: '8609.T', name: '岡三証券G' },
+    { symbol: '8614.T', name: '東洋証券' },
+    { symbol: '8616.T', name: '東海東京フィナンシャルHD' },
+    { symbol: '8622.T', name: '水戸証券' },
+    { symbol: '9504.T', name: '中国電力' },
+    { symbol: '9505.T', name: '北陸電力' },
+    { symbol: '9507.T', name: '四国電力' },
+    { symbol: '9511.T', name: '沖縄電力' },
+    { symbol: '9719.T', name: 'SCSK' },
+    { symbol: '9728.T', name: '日本管財HD' },
+    { symbol: '9742.T', name: 'アイネス' },
+    { symbol: '9744.T', name: 'メイテック' },
+    { symbol: '9760.T', name: '進学会HD' },
+    { symbol: '9795.T', name: 'ステップ' },
+  ]},
+  { key: 'tse_growth', label: '東証グロース', stocks: [
+    { symbol: '2148.T', name: 'ITmedia' },
+    { symbol: '2160.T', name: 'ジーエヌアイグループ' },
+    { symbol: '2183.T', name: 'リニカル' },
+    { symbol: '2323.T', name: 'fonfun' },
+    { symbol: '2477.T', name: '手間いらず' },
+    { symbol: '3180.T', name: 'ビューティガレージ' },
+    { symbol: '3182.T', name: 'オイシックス・ラ・大地' },
+    { symbol: '3465.T', name: 'ケイアイスター不動産' },
+    { symbol: '3528.T', name: 'プロパティエージェント' },
+    { symbol: '3626.T', name: 'TIS' },
+    { symbol: '3627.T', name: 'ネットイヤーグループ' },
+    { symbol: '3690.T', name: 'イルグルム' },
+    { symbol: '3697.T', name: 'SHIFT' },
+    { symbol: '3994.T', name: 'マネーフォワード' },
+    { symbol: '4019.T', name: 'スタメン' },
+    { symbol: '4053.T', name: 'SHOWROOMホールディングス' },
+    { symbol: '4058.T', name: 'トヨクモ' },
+    { symbol: '4169.T', name: 'ENECHANGE' },
+    { symbol: '4170.T', name: '語学春秋社' },
+    { symbol: '4175.T', name: 'coly' },
+    { symbol: '4376.T', name: 'チームスピリット' },
+    { symbol: '4418.T', name: 'JDSC' },
+    { symbol: '4422.T', name: 'ヤプリ' },
+    { symbol: '4429.T', name: 'リックソフト' },
+    { symbol: '4447.T', name: 'ピー・ビーシステムズ' },
+    { symbol: '4449.T', name: 'ギフティ' },
+    { symbol: '4477.T', name: 'BASE' },
+    { symbol: '4480.T', name: 'メドレー' },
+    { symbol: '4485.T', name: 'JTower' },
+    { symbol: '4488.T', name: 'AI inside' },
+    { symbol: '4490.T', name: 'ビザスク' },
+    { symbol: '4493.T', name: 'サイバーセキュリティクラウド' },
+    { symbol: '4563.T', name: 'アンジェス' },
+    { symbol: '4565.T', name: 'そうせいグループ' },
+    { symbol: '4588.T', name: 'オンコリスバイオファーマ' },
+    { symbol: '4592.T', name: 'サンバイオ' },
+    { symbol: '4880.T', name: 'セルソース' },
+    { symbol: '4885.T', name: 'コレクティブ・ブレイン' },
+    { symbol: '5032.T', name: 'ANYCOLOR' },
+    { symbol: '5064.T', name: 'TBグループ' },
+    { symbol: '5842.T', name: 'ウィルスマート' },
+    { symbol: '6095.T', name: 'メドピア' },
+    { symbol: '6099.T', name: 'エラン' },
+    { symbol: '6175.T', name: 'ネットビジョンシステムズ' },
+    { symbol: '6182.T', name: 'メタリアル' },
+    { symbol: '6561.T', name: 'HAREホールディングス' },
+    { symbol: '7157.T', name: 'ライフネット生命' },
+    { symbol: '7163.T', name: '住信SBIネット銀行' },
+    { symbol: '7196.T', name: 'Casa' },
+    { symbol: '9263.T', name: 'ビジョナリーHD' },
+    { symbol: '9264.T', name: 'ポーラ・オルビスHD' },
   ]},
   { key: 'global', label: 'グローバル', stocks: [
     { symbol: '6758.T', name: 'ソニーグループ (日)' },
@@ -582,6 +734,30 @@ export default function Chart() {
     bb: false, volume: true, rsi: false, macd: false,
   });
 
+  const [metrics,     setMetrics]     = useState(null);
+  const [summaryData, setSummaryData] = useState(null);
+
+  useEffect(() => {
+    if (!symbol) return;
+    setMetrics(null);
+    fetchV7Quotes([symbol]).then(r => setMetrics(r[0] ?? null)).catch(() => setMetrics(null));
+  }, [symbol]);
+
+  useEffect(() => {
+    if (!symbol) return;
+    setSummaryData(null);
+    fetchSummary(symbol).then(d => {
+      const fd = d.financialData;
+      const bs = d.balanceSheetHistory?.balanceSheetStatements?.[0];
+      setSummaryData({
+        roe:         fd?.returnOnEquity?.raw ?? null,
+        equityRatio: (bs?.totalStockholdersEquity?.raw != null && bs?.totalAssets?.raw)
+                       ? bs.totalStockholdersEquity.raw / bs.totalAssets.raw
+                       : null,
+      });
+    }).catch(() => setSummaryData(null));
+  }, [symbol]);
+
   const period = PERIODS[periodIdx];
   const { data: chartData, loading, error } = useChart(symbol, period.interval, period.range);
   const { data: quote } = useQuote(symbol);
@@ -700,6 +876,26 @@ export default function Chart() {
             <SymbolSearch onSelect={r => setSymbol(r.symbol)} placeholder="銘柄を検索…" />
           </div>
         </div>
+      </div>
+
+      {/* Financial metrics panel */}
+      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
+        {[
+          { label: '時価総額',     value: formatMarketCap(metrics?.marketCap) },
+          { label: '配当利回り',   value: metrics?.dividendYield != null ? `${(metrics.dividendYield * 100).toFixed(2)}%` : '—' },
+          { label: 'PER',          value: fmt(metrics?.trailingPE, 1) },
+          { label: 'PBR',          value: fmt(metrics?.priceToBook, 2) },
+          { label: 'EPS',          value: fmt(metrics?.epsTrailingTwelveMonths, 2) },
+          { label: 'ROE',          value: summaryData?.roe != null ? `${(summaryData.roe * 100).toFixed(1)}%` : '—' },
+          { label: '自己資本比率', value: summaryData?.equityRatio != null ? `${(summaryData.equityRatio * 100).toFixed(1)}%` : '—' },
+          { label: '年初来高値',   value: metrics?.fiftyTwoWeekHigh?.toLocaleString() ?? '—' },
+          { label: '年初来安値',   value: metrics?.fiftyTwoWeekLow?.toLocaleString()  ?? '—' },
+        ].map(({ label, value }) => (
+          <div key={label} className="bg-[#1e293b] rounded-lg p-2.5 border border-slate-700 text-center">
+            <div className="text-[10px] text-slate-500 mb-0.5">{label}</div>
+            <div className="text-sm font-semibold tabular-nums">{value}</div>
+          </div>
+        ))}
       </div>
 
       {/* Chart controls */}
