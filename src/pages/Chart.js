@@ -7,6 +7,25 @@ import SymbolSearch from '../components/SymbolSearch';
 import PriceChange from '../components/PriceChange';
 import { fetchV7Quotes, fetchSummary } from '../api/yahoo';
 
+// Markets that load their stock list dynamically from JPX
+const DYNAMIC_JP = { tse_prime: 'prime', tse_standard: 'standard', tse_growth: 'growth' };
+
+// In-memory + sessionStorage cache so switching markets doesn't re-fetch
+const _memCache = {};
+async function fetchMarketStocks(market) {
+  if (_memCache[market]) return _memCache[market];
+  try {
+    const ss = sessionStorage.getItem(`stocks_${market}`);
+    if (ss) { _memCache[market] = JSON.parse(ss); return _memCache[market]; }
+  } catch {}
+  const res = await fetch(`/api/stocklist?market=${market}`);
+  const data = await res.json();
+  if (!Array.isArray(data.stocks) || !data.stocks.length) throw new Error(data.error ?? 'empty');
+  _memCache[market] = data.stocks;
+  try { sessionStorage.setItem(`stocks_${market}`, JSON.stringify(data.stocks)); } catch {}
+  return data.stocks;
+}
+
 function formatMarketCap(v) {
   if (v == null) return '—';
   if (v >= 1e12) return `${(v / 1e12).toFixed(1)}兆`;
@@ -734,8 +753,10 @@ export default function Chart() {
     bb: false, volume: true, rsi: false, macd: false,
   });
 
-  const [metrics,     setMetrics]     = useState(null);
-  const [summaryData, setSummaryData] = useState(null);
+  const [dynamicStocks,  setDynamicStocks]  = useState({});
+  const [stocksLoading,  setStocksLoading]  = useState(false);
+  const [metrics,        setMetrics]        = useState(null);
+  const [summaryData,    setSummaryData]    = useState(null);
 
   useEffect(() => {
     if (!symbol) return;
@@ -758,6 +779,20 @@ export default function Chart() {
     }).catch(() => setSummaryData(null));
   }, [symbol]);
 
+  // Dynamically load full stock list from JPX data for JP market segments
+  useEffect(() => {
+    const apiMarket = DYNAMIC_JP[marketKey];
+    if (!apiMarket || dynamicStocks[marketKey]) return;
+    setStocksLoading(true);
+    fetchMarketStocks(apiMarket)
+      .then(stocks => {
+        setDynamicStocks(prev => ({ ...prev, [marketKey]: stocks }));
+        if (stocks.length) setSymbol(stocks[0].symbol);
+      })
+      .catch(() => {}) // silently fall back to hardcoded list
+      .finally(() => setStocksLoading(false));
+  }, [marketKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const period = PERIODS[periodIdx];
   const { data: chartData, loading, error } = useChart(symbol, period.interval, period.range);
   const { data: quote } = useQuote(symbol);
@@ -773,8 +808,12 @@ export default function Chart() {
         });
       } catch { return []; }
     }
+    // For JP markets, prefer dynamically loaded full list; fall back to hardcoded
+    if (DYNAMIC_JP[marketKey]) {
+      return dynamicStocks[marketKey] ?? CHART_MARKETS.find(m => m.key === marketKey)?.stocks ?? [];
+    }
     return CHART_MARKETS.find(m => m.key === marketKey)?.stocks ?? [];
-  }, [marketKey]);
+  }, [marketKey, dynamicStocks]);
 
   const currentIdx   = stockList.findIndex(s => s.symbol === symbol);
   const currentStock = stockList.find(s => s.symbol === symbol);
@@ -865,11 +904,14 @@ export default function Chart() {
             <button onClick={nextStock} disabled={!stockList.length}
               className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 rounded-lg text-sm font-bold transition-colors"
               title="次の銘柄 → キー">▶</button>
-            {stockList.length > 0 && (
-              <span className="text-xs text-slate-500 w-16 text-center">
-                {currentIdx >= 0 ? `${currentIdx + 1} / ${stockList.length}` : `— / ${stockList.length}`}
-              </span>
-            )}
+            {stocksLoading
+              ? <span className="text-xs text-slate-400 animate-pulse w-20 text-center">読み込み中…</span>
+              : stockList.length > 0 && (
+                  <span className="text-xs text-slate-500 w-20 text-center">
+                    {currentIdx >= 0 ? `${currentIdx + 1} / ${stockList.length}` : `— / ${stockList.length}`}
+                  </span>
+                )
+            }
           </div>
 
           <div className="flex-1 min-w-[180px] max-w-xs">
